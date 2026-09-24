@@ -11,10 +11,6 @@ lua tools.lua serve           # serve an existing dist/ build
 lua tools.lua install         # install/update esbuild + the LittleJS engine
 ```
 
-Each command runs from anywhere — the script switches to the repo root itself.
-Pass a port or version as the second argument: `lua tools.lua dev 8080` or
-`lua tools.lua install 0.29.0`.
-
 ## How it works
 
 `tools.lua` bundles `src/main.js` with the vendored esbuild binary and its
