@@ -12,7 +12,7 @@
 		"enabled": true,
 		"indentStyle": "tab",
 		"formatWithErrors": true,
-		"lineWidth": 80
+		"lineWidth": 100
 	},
 	"linter": {
 		"enabled": true,
