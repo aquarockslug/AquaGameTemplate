@@ -1,7 +1,7 @@
 {
   "frames": [
     {
-      "filename": "tiles.png",
+      "filename": "logo.png",
       "frame": {
         "x": 0,
         "y": 0,
@@ -53,8 +53,8 @@
     {
       "filename": "002.png",
       "frame": {
-        "x": 142,
-        "y": 0,
+        "x": 126,
+        "y": 16,
         "w": 16,
         "h": 14
       },
@@ -78,8 +78,8 @@
     {
       "filename": "000.png",
       "frame": {
-        "x": 158,
-        "y": 0,
+        "x": 126,
+        "y": 30,
         "w": 14,
         "h": 14
       },
@@ -107,7 +107,7 @@
     "image": "textures.png",
     "format": "RGBA8888",
     "size": {
-      "w": 172,
+      "w": 142,
       "h": 99
     },
     "scale": 1

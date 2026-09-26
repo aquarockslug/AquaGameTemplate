@@ -2,9 +2,10 @@ import * as l from "../vendor/littlejs.esm.js";
 import favicon from "../assets/favicon.png";
 import textureURL from "../assets/textures.png";
 import textureDataURL from "../assets/textures.json";
+import { Sprite } from "./sprite.js";
 
 // biome-ignore format: un-prefix frequently used littlejs functions
-const { vec2, vec3, hsl, rand, PI, sin, drawTile, drawText } = l;
+const { vec2, vec3, hsl, PI, drawTile, drawText } = l;
 
 // a map of frame name to TileInfo
 let textures;
@@ -21,22 +22,6 @@ const link = document.createElement("link");
 link.rel = "icon";
 link.href = favicon;
 document.head.append(link);
-
-// -----------------------------------------------------------------------------------------------------
-
-class Sprite extends l.EngineObject3D {
-	constructor(pos, tileInfo, color) {
-		super(pos, undefined, tileInfo, color); // billboard with no mesh
-		this.size3D = vec3(2);
-		this.softShadow = 2;
-		this.phase = rand(2 * PI);
-		this.pixelated = true;
-		this.bob = true;
-	}
-	update() {
-		if (this.bob) this.pos3D.y = 2 + sin((l.time + this.phase) * 2) * 0.5; // bob up and down
-	}
-}
 
 // -----------------------------------------------------------------------------------------------------
 
