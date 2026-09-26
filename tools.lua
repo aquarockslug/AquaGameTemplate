@@ -19,7 +19,8 @@ end
 local E         = sh "vendor/esbuild"
 local require_e = function() die(sh "test -x vendor/esbuild", "esbuild missing; run: lua tools.lua install") end
 local FLAGS     = " src/main.js --bundle --format=esm --sourcemap --asset-names=assets/[name]-[hash]" ..
-    " --loader:.png=file --loader:.jpg=file --loader:.mp3=file --loader:.ogg=file --loader:.wasm=file"
+    " --loader:.png=file --loader:.jpg=file --loader:.mp3=file --loader:.ogg=file --loader:.wasm=file" ..
+    " --loader:.json=file"
 
 -- build: minified production bundle in dist/
 local function build()
