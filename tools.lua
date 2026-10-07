@@ -1,89 +1,88 @@
 #!/usr/bin/env lua
--- lua tools.lua <dev|build|serve|install> [port|version]  (defaults: 8000, 0.28.2)
+-- lua tools.lua <dev|build|serve|install> [port|version]
+-- dev starts esbuild + Chrome with remote debugging (CDP)
 
-local a = arg
-local here = ((a[0] or "tools.lua"):match("^(.*)[/\\]") or "."):gsub("/%.$", "")
-if here:sub(1, 1) ~= "/" then here = (io.popen "pwd"):read("*l") .. "/" .. here:gsub("^%./", "") end
-here = here:gsub("/+$", ""); if here == "" then here = "/" end
-local sh        = function(c) return "cd '" .. here:gsub("'", "'\\''") .. "' && " .. c end -- always run from repo root
-local run       = function(c)
+local cfg = {
+	port = "8000",
+	cdp = "9222",         -- Chrome DevTools port
+	esbuild = "0.28.2",   -- pinned esbuild version
+	littlejs = "v1.25.0", -- fallback LittleJS tag when GitHub is unreachable
+	entry = "src/main.js",
+	out = "dist",
+	html = "index.html",
+	vendor = "vendor",
+	exts = "png jpg mp3 ogg wasm json", -- bundled as files
+	target = "",         -- optional esbuild target, e.g. "es2020"
+	chrome = "google-chrome-stable --no-first-run --no-default-browser-check",
+	profile = "/tmp/opencode/aquagametemplate-chrome",
+}
+
+local a    = arg
+local root = (a[0] or "tools.lua"):match("^(.*)[/\\]") or "."
+local sh   = function(c) return "cd '" .. root .. "' && " .. c end
+local function run(c, m)
 	local r = os.execute(c)
-	return r == true or r == 0
+	if not (r == true or r == 0) then io.stderr:write((m or "command failed") .. "\n") os.exit(1) end
 end
-local die       = function(c, m)
-	if not run(c) then
-		io.stderr:write(m .. "\n")
-		os.exit(1)
-	end
-end
-local E         = sh "vendor/esbuild"
-local require_e = function() die(sh "test -x vendor/esbuild", "esbuild missing; run: lua tools.lua install") end
-local FLAGS     = " src/main.js --bundle --format=esm --sourcemap --asset-names=assets/[name]-[hash]" ..
-    " --loader:.png=file --loader:.jpg=file --loader:.mp3=file --loader:.ogg=file --loader:.wasm=file" ..
-    " --loader:.json=file"
-
--- build: minified production bundle in dist/
-local function build()
-	require_e()
-	die(sh("rm -rf dist && " .. E .. FLAGS .. " --minify --define:PRODUCTION=true --outdir=dist" ..
-		" && cp index.html dist/index.html && touch dist/.nojekyll"), "build failed")
-	print "Build complete -> dist/"
-end
-
--- dev: live-reload dev server
-local function dev(p)
-	require_e()
-	die(sh("rm -rf dist && mkdir -p dist && cp index.html dist/index.html"), "setup failed")
-	os.execute(E .. FLAGS .. " --define:PRODUCTION=false --outdir=dist --serve=" .. p ..
-		" --servedir=dist --watch=forever")
-end
-
--- serve: serve an existing build
-local function serve(p)
-	die(sh "test -d dist", "dist/ missing; run: lua tools.lua build first")
-	os.execute(E .. " --servedir=dist --serve=" .. p)
-end
-
--- install [v]: download dependencies
-local function install(esb_v)
-	esb_v = esb_v or "0.28.2"
-	local s, m = (io.popen "uname -s"):read("*l"), (io.popen "uname -m"):read("*l")
-	local pkg = s == "Darwin" and (m == "arm64" and "darwin-arm64" or "darwin-x64")
-	    or s == "Linux" and (m == "x86_64" or m == "amd64") and "linux-x64"
-	    or s == "Linux" and (m == "aarch64" or m == "arm64") and "linux-arm64"
-	    or (s:match "^MINGW" or s:match "^MSYS" or s:match "^CYGWIN") and "win32-x64"
-	if not pkg then
-		io.stderr:write("Unsupported platform: " .. s .. " " .. m .. "\n")
-		os.exit(1)
-	end
-	local exe = pkg:match "^win" and "esbuild.exe" or "bin/esbuild"
-	local eu = "https://registry.npmjs.org/@esbuild/" .. pkg .. "/-/" .. pkg .. "-" .. esb_v .. ".tgz"
-	-- latest LittleJS release tag (fall back to a known version if the API call fails)
-	local f = io.popen "curl -s --max-time 20 https://api.github.com/repos/KilledByAPixel/LittleJS/releases/latest"
-	local tag = (f and f:read "*a" or ""):match('"tag_name"%s*:%s*"([^"]+)"') or "v1.19.3"
+local function get(u)
+	local f = io.popen("curl -s --max-time 20 '" .. u .. "'")
+	local t = f and f:read "*a" or ""
 	if f then f:close() end
+	return t
+end
+
+local bin, loaders = cfg.vendor .. "/esbuild", ""
+for e in cfg.exts:gmatch "%S+" do loaders = loaders .. " --loader:." .. e .. "=file" end
+local E = "test -x " .. bin .. " || { echo 'esbuild missing; run: lua tools.lua install' >&2; exit 1; }; " .. bin
+local B = E .. " " .. cfg.entry .. " --bundle --format=esm --sourcemap --asset-names=assets/[name]-[hash]"
+	.. loaders .. (cfg.target ~= "" and " --target=" .. cfg.target or "")
+local copy = "cp " .. cfg.html .. " " .. cfg.out .. "/" .. cfg.html
+
+local function build() -- minified production bundle
+	run(sh("rm -rf " .. cfg.out .. " && " .. B .. " --minify --define:PRODUCTION=true --outdir=" .. cfg.out ..
+		" && " .. copy .. " && touch " .. cfg.out .. "/.nojekyll"), "build failed")
+	print("Build complete -> " .. cfg.out .. "/")
+end
+
+local function dev(p) -- live-reload dev server + Chrome DevTools (CDP)
+	run(sh("rm -rf " .. cfg.out .. " && mkdir -p " .. cfg.out .. " && " .. copy), "setup failed")
+	os.execute("curl -sf localhost:" .. cfg.cdp .. "/json/version >/dev/null 2>&1 || " .. cfg.chrome ..
+		" --remote-debugging-port=" .. cfg.cdp .. " --remote-allow-origins=* --user-data-dir=" .. cfg.profile ..
+		" http://localhost:" .. p .. " >/dev/null 2>&1 &")
+	print("Dev server http://localhost:" .. p .. "  |  DevTools http://localhost:" .. cfg.cdp)
+	run(sh(B .. " --define:PRODUCTION=false --outdir=" .. cfg.out .. " --serve=" .. p ..
+		" --servedir=" .. cfg.out .. " --watch=forever"), "dev failed")
+end
+
+local function serve(p) -- serve an existing build
+	run(sh("test -d " .. cfg.out), cfg.out .. "/ missing; run: lua tools.lua build first")
+	run(sh(E .. " --servedir=" .. cfg.out .. " --serve=" .. p))
+end
+
+local function install(v) -- download esbuild + LittleJS into vendor/
+	v = v or cfg.esbuild
+	local s, m = (io.popen "uname -s"):read "*l", (io.popen "uname -m"):read "*l"
+	local plat = ({ Linux = "linux", Darwin = "darwin" })[s]
+	local arch = ({ x86_64 = "x64", amd64 = "x64", arm64 = "arm64", aarch64 = "arm64" })[m]
+	local pkg = s:match "^[MCY]" and "win32-x64" or plat and arch and plat .. "-" .. arch
+	if not pkg then io.stderr:write("Unsupported platform: " .. s .. " " .. m .. "\n") os.exit(1) end
+	local tag = (get "https://api.github.com/repos/KilledByAPixel/LittleJS/releases/latest")
+		:match('"tag_name"%s*:%s*"([^"]+)"') or cfg.littlejs
+	local eu = "https://registry.npmjs.org/@esbuild/" .. pkg .. "/-/" .. pkg .. "-" .. v .. ".tgz"
 	local lu = "https://github.com/KilledByAPixel/LittleJS/releases/download/" .. tag ..
-	    "/LittleJS-" .. tag:gsub("^[Vv]", "") .. ".zip"
-	print("Downloading esbuild " .. esb_v .. " + LittleJS " .. tag)
-	die(sh("mkdir -p vendor && curl -L --fail -o /tmp/esbuild.tgz " .. eu ..
-		" && tar -xzf /tmp/esbuild.tgz -C vendor --strip-components=2 package/" .. exe ..
-		" && curl -L --fail -o /tmp/littlejs.zip " .. lu ..
-		" && unzip -p /tmp/littlejs.zip dist/littlejs.esm.js > /tmp/littlejs.esm.js" ..
-		" && mv -f /tmp/littlejs.esm.js vendor/littlejs.esm.js" ..
-		" && chmod +x vendor/esbuild && rm -f /tmp/esbuild.tgz /tmp/littlejs.zip"), "install failed")
+		"/LittleJS-" .. tag:gsub("^[Vv]", "") .. ".zip"
+	print("Downloading esbuild " .. v .. " + LittleJS " .. tag)
+	run(sh("mkdir -p " .. cfg.vendor .. " && cd " .. cfg.vendor ..
+		" && curl -Lsf -o e.tgz " .. eu .. " && tar -xzf e.tgz --strip-components=2 package/" ..
+		(pkg:match "^win" and "esbuild.exe" or "bin/esbuild") ..
+		" && curl -Lsf -o lj.zip " .. lu ..
+		" && unzip -p lj.zip dist/littlejs.esm.js > littlejs.esm.js" ..
+		" && chmod +x esbuild && rm -f e.tgz lj.zip"), "install failed")
 end
 
 local c, p = a[1], a[2]
-if c == "dev" then
-	dev(p or "8000")
-elseif c == "build" then
-	build()
-elseif c == "serve" then
-	serve(p or "8000")
-elseif c == "install" then
-	install(p)
-else
-	print "Usage: lua tools.lua <dev|build|serve|install> [port|version]"
-	os.exit(c and 1 or 0)
-end
-
+if c == "dev" then dev(p or cfg.port)
+elseif c == "build" then build()
+elseif c == "serve" then serve(p or cfg.port)
+elseif c == "install" then install(p)
+else print "Usage: lua tools.lua <dev|build|serve|install> [port|version]" os.exit(c and 1 or 0) end
