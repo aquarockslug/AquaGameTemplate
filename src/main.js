@@ -15,20 +15,22 @@ let textures;
 let state = initialState();
 let ringSprites = [];
 
-if (!PRODUCTION) {
-	l.setDebugWatermark(false);
-	window.l = l;
-	// current state, live (dev only)
-	Object.defineProperty(window, "state", { get: () => state });
-	// reload on rebuild when developing
-	new EventSource("/esbuild").addEventListener("change", () => location.reload());
-}
+window.onload = () => {
+	if (!PRODUCTION) {
+		l.setDebugWatermark(false);
+		window.l = l;
+		// current state, live (dev only)
+		Object.defineProperty(window, "state", { get: () => state });
+		// reload on rebuild when developing
+		new EventSource("/esbuild").addEventListener("change", () => location.reload());
+	}
 
-// favicon can't be referenced from index.html, so it's imported and injected here
-const link = document.createElement("link");
-link.rel = "icon";
-link.href = favicon;
-document.head.append(link);
+	// favicon can't be referenced from index.html, so it's imported and injected here
+	const link = document.createElement("link");
+	link.rel = "icon";
+	link.href = favicon;
+	document.head.append(link);
+};
 
 // -----------------------------------------------------------------------------------------------------
 // the engine shell: state.js owns WHAT happens, this file owns applying it to LittleJS
@@ -66,7 +68,8 @@ function gameUpdate() {
 	if (!PRODUCTION) freezeState(state); // catch accidental writes to received values
 
 	// side effect: copy the state's poses onto the engine objects
-	for (const [i, sprite] of state.sprites.entries()) ringSprites[i].pos3D.set(sprite.x, sprite.y, sprite.z);
+	for (const [i, sprite] of state.sprites.entries())
+		ringSprites[i].pos3D.set(sprite.x, sprite.y, sprite.z);
 }
 function gameUpdatePost() {}
 function gameRender() {}
