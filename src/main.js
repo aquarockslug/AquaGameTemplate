@@ -66,10 +66,6 @@ async function gameInit() {
 function gameUpdate() {
 	state = step(state, l.timeDelta);
 	if (!PRODUCTION) freezeState(state); // catch accidental writes to received values
-
-	// side effect: copy the state's poses onto the engine objects
-	for (const [i, sprite] of state.sprites.entries())
-		ringSprites[i].pos3D.set(sprite.x, sprite.y, sprite.z);
 }
 function gameUpdatePost() {}
 function gameRender() {}
