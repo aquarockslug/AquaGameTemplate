@@ -15,6 +15,12 @@ local cfg = {
 	target = "",         -- optional esbuild target, e.g. "es2020"
 	chrome = "google-chrome-stable --no-first-run --no-default-browser-check",
 	profile = "/tmp/opencode/aquagametemplate-chrome",
+	luaver = "5.4",       -- Lua version the multiplayer server runs on
+	rocks = "dkjson copas luasocket lua-websockets mimetypes", -- multiplayer server rocks
+	luasrc = {            -- Lua sources expected beside this repo (see server/run.sh)
+		{ "https://github.com/EvandroLG/pegasus.lua", "../pegasus.lua" },
+		{ "https://github.com/moteus/lua-pegasus-websocket", "../lua-pegasus-websocket" },
+	},
 }
 
 local a    = arg
@@ -59,7 +65,7 @@ local function serve(p) -- serve an existing build
 	run(sh(E .. " --servedir=" .. cfg.out .. " --serve=" .. p))
 end
 
-local function install(v) -- download esbuild + LittleJS into vendor/
+local function install(v) -- client (esbuild + LittleJS) and multiplayer server deps
 	v = v or cfg.esbuild
 	local s, m = (io.popen "uname -s"):read "*l", (io.popen "uname -m"):read "*l"
 	local plat = ({ Linux = "linux", Darwin = "darwin" })[s]
@@ -78,6 +84,28 @@ local function install(v) -- download esbuild + LittleJS into vendor/
 		" && curl -Lsf -o lj.zip " .. lu ..
 		" && unzip -p lj.zip dist/littlejs.esm.js > littlejs.esm.js" ..
 		" && chmod +x esbuild && rm -f e.tgz lj.zip"), "install failed")
+
+	-- server: Lua rocks loaded by server/main.lua, plus the two Lua sources
+	-- beside this repo (see server/run.sh for PEGASUS_DIR / WSPLUGIN_DIR)
+	run("command -v luarocks >/dev/null 2>&1",
+		"luarocks not found; install LuaRocks to run the multiplayer server")
+	print("Installing Lua " .. cfg.luaver .. " rocks: " .. cfg.rocks)
+	for rock in cfg.rocks:gmatch "%S+" do
+		-- lua-websockets lists luabitop, which does not build on Lua 5.4; the
+		-- server preloads a pure-Lua `bit` instead, so skip its dependencies
+		local skip = rock == "lua-websockets" and " --deps-mode=none" or ""
+		run("luarocks --lua-version=" .. cfg.luaver .. " --local install" .. skip .. " " .. rock,
+			"rock install failed: " .. rock)
+	end
+	for _, src in ipairs(cfg.luasrc) do
+		if os.execute("test -d '" .. src[2] .. "'") == true then
+			print("Keeping existing " .. src[2])
+		else
+			print("Cloning " .. src[1] .. " -> " .. src[2])
+			run("git clone --depth 1 " .. src[1] .. " '" .. src[2] .. "'",
+				"clone failed: " .. src[1])
+		end
+	end
 end
 
 local c, p = a[1], a[2]
