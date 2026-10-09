@@ -3,10 +3,10 @@ import * as l from "../vendor/littlejs.esm.js";
 // biome-ignore format: un-prefix frequently used littlejs functions
 const { vec3 } = l;
 
-/** A billboard sprite from a tile. A pure view: game state drives where it is (see state.js) */
+/** A billboard sprite drawn from a tile — a pure view; state decides where it is. */
 export class Sprite extends l.EngineObject3D {
 	constructor(pos, tileInfo, color) {
-		super(pos, undefined, tileInfo, color); // billboard with no mesh
+		super(pos, undefined, tileInfo, color); // no mesh = billboard
 		this.size3D = vec3(2);
 		this.softShadow = 2;
 		this.pixelated = true;
@@ -14,9 +14,9 @@ export class Sprite extends l.EngineObject3D {
 }
 
 /**
- * A player's avatar. Used for both the local player and every remote one; the
- * shell only ever repositions it from pure state (state.js / players.js), so
- * update() stays empty. `playerId` is the server-assigned id, or null offline.
+ * A player's avatar, for both the local player and every remote one. The shell
+ * only repositions it from pure state, so update() stays empty. `playerId` is the
+ * server-assigned id, or null while offline.
  */
 export class Player extends Sprite {
 	constructor(pos, tileInfo, color) {

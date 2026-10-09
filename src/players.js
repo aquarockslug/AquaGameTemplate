@@ -1,30 +1,21 @@
-// Pure multiplayer state: no engine calls, no sockets, and no mutation of
-// received values — the same conventions state.js follows (see AGENTS.md).
-//
-// The server is authoritative over positions and sends them at a fixed tick
-// rate. This module turns that stream of discrete snapshots into smooth motion:
-// every remote is held slightly in the past and interpolated between the two
-// most recent snapshots, so a 20 Hz feed draws smoothly at any framerate.
+/** Pure remote-player state: remotes are held one tick in the past and interpolated between snapshots, so a 20 Hz feed draws smoothly at any framerate. */
 
 const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = (v) => Math.min(Math.max(v, 0), 1);
 
-// How far behind the newest snapshot remotes are drawn, in seconds. One server
-// tick of slack absorbs jitter in when snapshots actually arrive.
+/** How far behind the newest snapshot remotes are drawn, in seconds (one tick of slack). */
 export const INTERP_DELAY = 1 / 20;
 
-export function initialPlayers() {
-	return { time: 0, remotes: {} };
-}
+export const initialPlayers = () => ({ time: 0, remotes: {} });
 
 /**
- * Fold a server snapshot into the remote roster: unknown ids appear, departed
- * ids are dropped, survivors keep their previous target so interpolation has a
- * "from". Times are in this module's own clock (seconds), never server ticks,
- * so the client and server clocks are never mixed.
- * @param {object} players current remote state
+ * Fold a server snapshot into the remote roster: unknown ids appear, departed ids
+ * are dropped, survivors keep their previous target so interpolation has a "from".
+ * Times are this module's own clock (seconds), never server ticks.
+ * @param {{time: number, remotes: Object}} players current remote state
  * @param {{tick: number, players: Array<[number, number, number]>}} snapshot
  * @param {number|null} selfId this client's id, which is predicted not interpolated
- * @returns {object} the next remote state
+ * @returns {{time: number, remotes: Object}} the next remote state
  */
 export function applySnapshot(players, snapshot, selfId) {
 	const now = players.time;
@@ -32,18 +23,18 @@ export function applySnapshot(players, snapshot, selfId) {
 	for (const [id, x, z] of snapshot.players) {
 		if (id === selfId) continue; // our own avatar is predicted in state.js
 		const key = String(id); // object keys are strings; use one type everywhere
-		const existing = players.remotes[key];
+		const prev = players.remotes[key];
 		remotes[key] = {
 			key,
 			id,
-			fromX: existing ? existing.toX : x,
-			fromZ: existing ? existing.toZ : z,
 			toX: x,
 			toZ: z,
-			fromTime: existing ? existing.toTime : now,
 			toTime: now,
-			renderX: existing ? existing.renderX : x,
-			renderZ: existing ? existing.renderZ : z,
+			fromX: prev?.toX ?? x,
+			fromZ: prev?.toZ ?? z,
+			fromTime: prev?.toTime ?? now,
+			renderX: prev?.renderX ?? x,
+			renderZ: prev?.renderZ ?? z,
 		};
 	}
 	return { ...players, remotes };
@@ -53,11 +44,9 @@ export function applySnapshot(players, snapshot, selfId) {
 export function stepPlayers(players, dt) {
 	const time = players.time + dt;
 	const remotes = {};
-	for (const key of Object.keys(players.remotes)) {
-		const remote = players.remotes[key];
+	for (const [key, remote] of Object.entries(players.remotes)) {
 		const span = remote.toTime - remote.fromTime;
-		const elapsed = time - INTERP_DELAY - remote.fromTime;
-		const t = span > 0 ? Math.min(Math.max(elapsed / span, 0), 1) : 1;
+		const t = span > 0 ? clamp01((time - INTERP_DELAY - remote.fromTime) / span) : 1;
 		remotes[key] = {
 			...remote,
 			renderX: lerp(remote.fromX, remote.toX, t),
@@ -68,13 +57,11 @@ export function stepPlayers(players, dt) {
 }
 
 /**
- * A stable, well-spread color per player id, so every client agrees on who is
- * who without the server having to send colors.
+ * A stable, well-spread color per player id (golden-ratio hue stepping), so every
+ * client agrees on who is who without the server sending colors.
  * @param {number|string} id
  * @param {Function} hsl the engine's hsl color constructor
  * @returns {object} an hsl color
  */
-export function playerColor(id, hsl) {
-	// golden-ratio hue stepping keeps consecutive ids far apart on the wheel
-	return hsl(((Number(id) * 0.618033988749895) % 1 + 1) % 1, 0.8, 0.7);
-}
+export const playerColor = (id, hsl) =>
+	hsl((((Number(id) * 0.618033988749895) % 1) + 1) % 1, 0.8, 0.7);

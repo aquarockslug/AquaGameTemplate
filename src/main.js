@@ -1,53 +1,41 @@
-import * as l from "../vendor/littlejs.esm.js";
 import favicon from "../assets/favicon.png";
-import textureURL from "../assets/textures.png";
 import textureDataURL from "../assets/textures.json";
+import textureURL from "../assets/textures.png";
+import * as l from "../vendor/littlejs.esm.js";
 import * as net from "./net.js";
 import { applySnapshot, initialPlayers, playerColor, stepPlayers } from "./players.js";
-import { Player } from "./sprite.js";
+import { Player } from "./sprites.js";
 import { freezeState, initialState, step } from "./state.js";
 
 // biome-ignore format: un-prefix frequently used littlejs functions
 const { vec2, vec3, hsl } = l;
 
-// a map of frame name to TileInfo
-let textures;
-
-// tile used for every player avatar
+/** Tile used for every player avatar (frame name in the loaded atlas). */
 const AVATAR_TILE = "000";
-
-// pure state: state.js owns the predicted local player, players.js the remotes
-let state = initialState();
-let players = initialPlayers();
-
-// engine views: one local avatar plus one per remote id
-let selfAvatar;
-const remoteAvatars = new Map();
-
-// reconnect backoff, in seconds of engine time
+/** Reconnect backoff, in seconds of engine time. */
 const RETRY_DELAY = 2;
+
+let textures; // frame name -> TileInfo
+let state = initialState(); // state.js owns the predicted local player
+let players = initialPlayers(); // players.js owns the remotes
+let selfAvatar;
+const remoteAvatars = new Map(); // remote id -> engine view
 let nextRetryAt = 0;
 
 window.onload = () => {
 	if (!PRODUCTION) {
 		l.setDebugWatermark(false);
 		window.l = l;
-		// current state, live (dev only)
 		Object.defineProperty(window, "state", { get: () => state });
 		Object.defineProperty(window, "players", { get: () => players });
-		// reload on rebuild when developing
-		new EventSource("/esbuild").addEventListener("change", () => location.reload());
+		new EventSource("/esbuild").addEventListener("change", () => location.reload()); // reload on rebuild
 	}
-
 	// favicon can't be referenced from index.html, so it's imported and injected here
 	const link = document.createElement("link");
 	link.rel = "icon";
 	link.href = favicon;
 	document.head.append(link);
 };
-
-// -----------------------------------------------------------------------------------------------------
-// the engine shell: state.js owns WHAT happens, this file owns applying it to LittleJS
 
 async function gameInit() {
 	textures = l.loadAtlas(textureURL, textureDataURL);
@@ -71,6 +59,7 @@ function assignSelfId(id) {
 	selfAvatar.color = playerColor(id, hsl);
 }
 
+/** Reconnect no faster than once per RETRY_DELAY while offline. */
 function connectWithRetry() {
 	if (net.isConnected() || net.isConnecting()) return;
 	if (l.time < nextRetryAt) return;
@@ -82,18 +71,12 @@ async function gameUpdate() {
 	const direction = l.keyDirection();
 	net.sendInput(direction.x, -direction.y);
 
-	// fold the latest snapshot into the remote roster, then advance it
 	const snapshot = net.consumeSnapshot();
 	if (snapshot) players = applySnapshot(players, snapshot, net.id());
 	players = stepPlayers(players, l.timeDelta);
 
-	// the server's position for us, when this frame carried a snapshot with it
-	state = step(
-		state,
-		{ direction, server: findSelf(snapshot, net.id()) },
-		l.timeDelta,
-	);
-	if (!PRODUCTION) freezeState(state); // catch accidental writes to received values
+	state = step(state, { direction, server: findSelf(snapshot, net.id()) }, l.timeDelta);
+	if (!PRODUCTION) freezeState(state); // catch accidental writes in dev
 
 	applyPoses();
 	connectWithRetry();
@@ -117,8 +100,7 @@ function gameRenderPost() {
 function applyPoses() {
 	selfAvatar.pos3D = state.player.pos;
 
-	for (const key of Object.keys(players.remotes)) {
-		const remote = players.remotes[key];
+	for (const [key, remote] of Object.entries(players.remotes)) {
 		let avatar = remoteAvatars.get(key);
 		if (!avatar) {
 			avatar = new Player(

@@ -21,7 +21,7 @@ lua tools.lua install         # install/update
 - `src/net.js` — the only file that touches WebSocket: connect, send input, receive snapshots.
 - `src/fp.js` — small Functional-Light helpers (`pipe`, `compose`, `curry`, `partial`, `unary`).
 - `src/main.js` — the engine shell: the five LittleJS callbacks, state wiring, all side effects.
-- `src/sprite.js` — entity classes extending `EngineObject3D`.
+- `src/sprites.js` — entity classes extending `EngineObject3D`.
 - `server/` — the Lua Pegasus WebSocket game server (`run.sh`, `main.lua`, `room.lua`).
 - `ref/littlejs.md` — LittleJS API quick reference (grep it before hand-rolling anything).
 
