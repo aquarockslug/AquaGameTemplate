@@ -2,7 +2,7 @@ import * as l from "../vendor/littlejs.esm.js";
 import favicon from "../assets/favicon.png";
 import textureURL from "../assets/textures.png";
 import textureDataURL from "../assets/textures.json";
-import { Sprite } from "./sprite.js";
+import { Player } from "./sprite.js";
 import { freezeState, initialState, step } from "./state.js";
 
 // biome-ignore format: un-prefix frequently used littlejs functions
@@ -11,9 +11,11 @@ const { vec2, vec3, hsl } = l;
 // a map of frame name to TileInfo
 let textures;
 
+// the visual representation of the player
+let player;
+
 // the pure game state and the engine objects that view it
 let state = initialState();
-let ringSprites = [];
 
 window.onload = () => {
 	if (!PRODUCTION) {
@@ -43,29 +45,19 @@ async function gameInit() {
 	l.render3D.setSky(hsl(0.65, 0.5, 0.15), hsl(0.8, 0.4, 0.3), hsl(0.65, 0.4, 0.1));
 	l.render3D.setFog(15, 40);
 	l.render3D.ambientColor = hsl(0.6, 0.2, 0.5);
-	new l.CameraControl3D(vec3(), 15, 0.5, 0.003);
+	new l.CameraControl3D(vec3(), 15, 0.5);
 	new l.EngineObject3D(vec3(), l.buildGrid(vec2(30), 1, hsl(0.8, 0.2, 0.3))); // floor
-	new l.EngineObject3D(vec3(0, 2, 0), l.buildBox(2).setColor(hsl(0, 0, 0.7))); // cube
 
-	// spawn one view per sprite in the state
-	const frames = ["000", "001", "002"].map((name) => textures[name]);
-	ringSprites = state.sprites.map(
-		(sprite, i) =>
-			new Sprite(
-				vec3(sprite.x, sprite.y, sprite.z),
-				frames[i % frames.length],
-				hsl(i / state.sprites.length, 0.8, 0.7),
-			),
-	);
-
-	const logo = new Sprite(vec3(0, 6), textures.logo, hsl(0, 0, 1));
-	logo.size3D = vec3(4, (4 * 100) / 132, 2); // keep the 132x100 frame's aspect ratio
-	logo.softShadow = 0;
+	player = new Player(vec3(0, 1, 0), textures.logo);
 }
 
-function gameUpdate() {
-	state = step(state, l.timeDelta);
-	if (!PRODUCTION) freezeState(state); // catch accidental writes to received values
+async function gameUpdate() {
+	let input = { direction: l.keyDirection() };
+
+	state = step(state, input, l.timeDelta);
+	if (!PRODUCTION) freezeState(state); // catch accidental writes to receive;d alues
+
+	player.pos3D = state.player.pos;
 }
 function gameUpdatePost() {}
 function gameRender() {}

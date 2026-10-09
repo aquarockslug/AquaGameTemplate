@@ -12,3 +12,10 @@ export class Sprite extends l.EngineObject3D {
 		this.pixelated = true;
 	}
 }
+
+export class Player extends Sprite {
+	constructor(pos, tileInfo) {
+		super(pos, tileInfo);
+	}
+	update() {}
+}
