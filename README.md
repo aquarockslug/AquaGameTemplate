@@ -1,6 +1,6 @@
 # LittleJS + esbuild
 
-A LittleJS game template with a dev server and production build.
+A LittleJS game template with a dev server and production build. Code conventions live in `AGENTS.md`.
 
 ## Commands
 
@@ -10,23 +10,9 @@ lua tools.lua dev             # dev server with live reload on :8000
                               #   reused if a CDP browser is already running
 lua tools.lua build           # minified production build to dist/
 lua tools.lua serve           # serve an existing dist/ build
-lua tools.lua install         # install/update
-./server/run.sh               # multiplayer WebSocket server on :8080
+lua tools.lua install         # client toolchain + multiplayer server deps
+lua tools.lua server          # multiplayer WebSocket server on :8080
 ```
-
-## Layout
-
-- `src/state.js` — pure game state: `initialState()` and `step(state, input, dt)`. Imports nothing from LittleJS.
-- `src/players.js` — pure remote-player state: folds server snapshots and interpolates them.
-- `src/net.js` — the only file that touches WebSocket: connect, send input, receive snapshots.
-- `src/fp.js` — small Functional-Light helpers (`pipe`, `compose`, `curry`, `partial`, `unary`).
-- `src/main.js` — the engine shell: the five LittleJS callbacks, state wiring, all side effects.
-- `src/sprites.js` — entity classes extending `EngineObject3D`.
-- `server/` — the Lua Pegasus WebSocket game server (`run.sh`, `main.lua`, `room.lua`).
-- `ref/littlejs.md` — LittleJS API quick reference (grep it before hand-rolling anything).
-
-Game rules live in `state.js` as pure functions; `main.js` applies results to engine objects.
-See `AGENTS.md` for the full conventions.
 
 ## Multiplayer
 
@@ -35,9 +21,11 @@ owns every player's position and broadcasts them at 20 Hz, while each client pre
 its own movement locally and interpolates everyone else. Open the game in two tabs to
 see both players.
 
-Start the server with `./server/run.sh`. It needs Lua 5.4, `dkjson`, and the
-`pegasus.lua` / `lua-pegasus-websocket` sources (found beside this repo by default;
-override with `PEGASUS_DIR` and `WSPLUGIN_DIR`).
+Set up once with `lua tools.lua install`: the multiplayer server needs Lua 5.4 + LuaRocks,
+and it installs its rocks into your user LuaRocks tree while cloning `pegasus.lua` and
+`lua-pegasus-websocket` **beside** this repo (`PEGASUS_DIR` / `WSPLUGIN_DIR` override the
+locations) — nothing is installed inside the repo. Then start it with `lua tools.lua server`
+(equivalent to `./server/run.sh`, but installs missing deps first).
 
 Protocol — JSON text frames over `ws://<host>:8080/ws`, subprotocol `game`:
 

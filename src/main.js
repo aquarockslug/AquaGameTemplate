@@ -78,7 +78,7 @@ async function gameUpdate() {
 	state = step(state, { direction, server: findSelf(snapshot, net.id()) }, l.timeDelta);
 	if (!PRODUCTION) freezeState(state); // catch accidental writes in dev
 
-	applyPoses();
+	applyPositions();
 	connectWithRetry();
 }
 
@@ -97,7 +97,7 @@ function gameRenderPost() {
 }
 
 /** Copy pure player positions onto engine objects, creating/destroying avatars. */
-function applyPoses() {
+function applyPositions() {
 	selfAvatar.pos3D = state.player.pos;
 
 	for (const [key, remote] of Object.entries(players.remotes)) {
@@ -111,7 +111,7 @@ function applyPoses() {
 			avatar.playerId = remote.id;
 			remoteAvatars.set(key, avatar);
 		}
-		avatar.setPose(remote.renderX, remote.renderZ);
+		avatar.setPos(remote.renderX, remote.renderZ);
 	}
 
 	for (const [key, avatar] of remoteAvatars) {

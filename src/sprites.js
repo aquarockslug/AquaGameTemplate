@@ -25,7 +25,7 @@ export class Player extends Sprite {
 	}
 
 	/** Place the avatar at an XZ position, keeping its height. */
-	setPose(x, z) {
+	setPos(x, z) {
 		this.pos3D = vec3(x, this.pos3D.y, z);
 	}
 
