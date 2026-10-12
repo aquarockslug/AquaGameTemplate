@@ -3,7 +3,8 @@
 -- Speaks JSON text frames (see README / the protocol table below):
 --   server -> client  {"t":"welcome","id":3}
 --   client -> server  {"t":"in","x":0.5,"z":-0.3}
---   server -> all     {"t":"s","tick":120,"p":[[id,x,z],...]}
+--   client -> server  {"t":"name","name":"Alice"}
+--   server -> all     {"t":"s","tick":120,"p":[[id,x,z,name],...]}
 --
 -- Protocol notes that are easy to get wrong with this stack:
 --
@@ -79,6 +80,8 @@ local function serve(ws)
       local msg = json.decode(frame)
       if type(msg) == "table" and msg.t == "in" then
         room:setInput(player, tonumber(msg.x) or 0, tonumber(msg.z) or 0)
+      elseif type(msg) == "table" and msg.t == "name" then
+        room:setName(player, msg.name)
       end
     end
   end

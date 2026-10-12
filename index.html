@@ -5,9 +5,59 @@
   <meta name=viewport content="width=device-width,initial-scale=1,user-scalable=no">
   <meta name=apple-mobile-web-app-capable content=yes>
   <meta name=mobile-web-app-capable content=yes>
-  <title>Game</title>
+  <title>Aqua Game</title>
+  <style>
+    /* Full-screen overlay that centers the menu panel above the canvas. */
+    .topDiv
+    {
+      position: absolute;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .menuDiv
+    {
+      gap: 18px;
+      padding: 30px;
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+      border: 3px solid black;
+      background-color: white;
+      color: black;
+      font-family: sans-serif;
+      visibility: hidden;
+    }
+    .menuDiv input, .menuDiv button
+    {
+      font: inherit;
+      padding: 8px 14px;
+      min-width: 220px;
+      box-sizing: border-box;
+    }
+    .menuDiv .hint
+    {
+      font-size: 14px;
+      opacity: .6;
+    }
+  </style>
 </head>
 <body>
-  <script src=./main.js type=module></script>
+
+<!-- html menu system, its elements are wired up by src/menu.js -->
+<div class=topDiv>
+  <div id=menu class=menuDiv>
+    <b style=font-size:44px>Aqua Game</b>
+    <label for=input_username>Choose a username</label>
+    <input id=input_username maxlength=16 autocomplete=off spellcheck=false placeholder="Enter your name">
+    <button id=button_start>Play</button>
+    <span class=hint>Press M to change your name</span>
+  </div>
+</div>
+
+<script src=./main.js type=module></script>
 </body>
 </html>

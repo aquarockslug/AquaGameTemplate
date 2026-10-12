@@ -18,10 +18,11 @@ Room.__index = Room
 local TICK_RATE = 20
 local SPEED = 6          -- world units per second
 local ARENA_RADIUS = 14  -- players are clamped to this radius on the XZ plane
+local NAME_MAX = 16      -- player names are clamped to this many characters
 
 function Room:new()
   return setmetatable({
-    players = {},   -- [id] = { id = n, x = 0, z = 0, ix = 0, iz = 0 }
+    players = {},   -- [id] = { id = n, name = "", x = 0, z = 0, ix = 0, iz = 0 }
     nextId = 1,
     tick = 0,
   }, self)
@@ -30,7 +31,7 @@ end
 function Room:add()
   local id = self.nextId
   self.nextId = id + 1
-  self.players[id] = { id = id, x = 0, z = 0, ix = 0, iz = 0 }
+  self.players[id] = { id = id, name = "", x = 0, z = 0, ix = 0, iz = 0 }
   return self.players[id]
 end
 
@@ -58,6 +59,17 @@ function Room:setInput(player, x, z)
   player.ix, player.iz = x, z
 end
 
+--- Store a client's chosen display name, cleaned and clamped to NAME_MAX.
+-- Clients draw the name, so the server just keeps it short and printable.
+-- @param player table the player table
+-- @param name string the requested name
+function Room:setName(player, name)
+  if type(name) ~= "string" then return end
+  name = name:gsub("%c", " "):gsub("%s+", " ") -- no control characters or runs
+  name = name:gsub("^ ", ""):gsub(" $", ""):sub(1, NAME_MAX)
+  player.name = name
+end
+
 --- Integrate every player by one tick of its stored input.
 function Room:advance()
   local dt = 1 / TICK_RATE
@@ -81,7 +93,7 @@ function Room:snapshot()
   self.tick = self.tick + 1
   local list = {}
   for id, player in pairs(self.players) do
-    list[#list + 1] = { id, player.x, player.z }
+    list[#list + 1] = { id, player.x, player.z, player.name or "" }
   end
   return json.encode({ t = "s", tick = self.tick, p = list })
 end

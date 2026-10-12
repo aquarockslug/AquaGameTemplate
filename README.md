@@ -25,7 +25,9 @@ Set up once with `lua tools.lua install`: the multiplayer server needs Lua 5.4 +
 and it installs its rocks into your user LuaRocks tree while cloning `pegasus.lua` and
 `lua-pegasus-websocket` **beside** this repo (`PEGASUS_DIR` / `WSPLUGIN_DIR` override the
 locations) — nothing is installed inside the repo. Then start it with `lua tools.lua server`
-(equivalent to `./server/run.sh`, but installs missing deps first).
+(equivalent to `./server/run.lua`, but installs missing deps first). Starting the server
+kills any other running instance and frees the port first, so restarting mid-playtest
+never hits "address already in use".
 
 Protocol — JSON text frames over `ws://<host>:8080/ws`, subprotocol `game`:
 
@@ -33,7 +35,8 @@ Protocol — JSON text frames over `ws://<host>:8080/ws`, subprotocol `game`:
 | --- | --- |
 | server → client | `{"t":"welcome","id":3}` |
 | client → server | `{"t":"in","x":0.5,"z":-0.3}` |
-| server → all | `{"t":"s","tick":120,"p":[[id,x,z],...]}` |
+| client → server | `{"t":"name","name":"Alice"}` |
+| server → all | `{"t":"s","tick":120,"p":[[id,x,z,name],...]}` |
 
 `SPEED` and `ARENA_RADIUS` in `src/state.js` **must** match `server/room.lua`; if they
 drift, the server keeps correcting client prediction and movement feels wrong. The dev

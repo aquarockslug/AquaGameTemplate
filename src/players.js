@@ -13,20 +13,21 @@ export const initialPlayers = () => ({ time: 0, remotes: {} });
  * are dropped, survivors keep their previous target so interpolation has a "from".
  * Times are this module's own clock (seconds), never server ticks.
  * @param {{time: number, remotes: Object}} players current remote state
- * @param {{tick: number, players: Array<[number, number, number]>}} snapshot
+ * @param {{tick: number, players: Array<[number, number, number, string]>}} snapshot
  * @param {number|null} selfId this client's id, which is predicted not interpolated
  * @returns {{time: number, remotes: Object}} the next remote state
  */
 export function applySnapshot(players, snapshot, selfId) {
 	const now = players.time;
 	const remotes = {};
-	for (const [id, x, z] of snapshot.players) {
+	for (const [id, x, z, name] of snapshot.players) {
 		if (id === selfId) continue; // our own avatar is predicted in state.js
 		const key = String(id); // object keys are strings; use one type everywhere
 		const prev = players.remotes[key];
 		remotes[key] = {
 			key,
 			id,
+			name: name ?? prev?.name ?? "",
 			toX: x,
 			toZ: z,
 			toTime: now,

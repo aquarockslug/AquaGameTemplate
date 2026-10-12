@@ -19,7 +19,7 @@ local cfg = {
 	lua = "lua5.4",       -- interpreter the multiplayer server runs on
 	luaver = "5.4",       -- Lua version the multiplayer server runs on
 	rocks = "dkjson copas luasocket lua-websockets mimetypes", -- multiplayer server rocks
-	luasrc = {            -- Lua sources expected beside this repo (see server/run.sh)
+	luasrc = {            -- Lua sources expected beside this repo (see server/run.lua)
 		{ "https://github.com/EvandroLG/pegasus.lua", "../pegasus.lua" },
 		{ "https://github.com/moteus/lua-pegasus-websocket", "../lua-pegasus-websocket" },
 	},
@@ -70,7 +70,7 @@ end
 
 local function serverDeps() -- multiplayer server: rocks + the two Lua sources
 	-- Everything lands outside this repo: rocks in the user LuaRocks tree,
-	-- sources beside it (PEGASUS_DIR / WSPLUGIN_DIR, see server/run.sh).
+	-- sources beside it (PEGASUS_DIR / WSPLUGIN_DIR, see server/run.lua).
 	for _, tool in ipairs { cfg.lua, "luarocks" } do
 		run("command -v " .. tool .. " >/dev/null 2>&1",
 			tool .. " not found; install it to run the multiplayer server (Debian/Ubuntu: apt install lua5.4 luarocks)")
@@ -119,7 +119,7 @@ end
 
 local function server(p) -- run the multiplayer server, installing its deps first
 	serverDeps()
-	run(sh("sh server/run.sh" .. (p and " " .. p or "")), "server failed")
+	run(sh(cfg.lua .. " server/run.lua" .. (p and " " .. p or "")), "server failed")
 end
 
 local c, p = a[1], a[2]

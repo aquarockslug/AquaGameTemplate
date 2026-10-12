@@ -9,6 +9,8 @@ let connected = false;
 let connecting = false;
 /** Latest snapshot, replaced (never mutated) whenever one arrives; null once consumed. */
 let snapshot = null;
+/** This client's chosen display name; (re)sent whenever the socket opens. */
+let displayName = "";
 /** Called with the server-assigned player id once the connection is live. */
 let onWelcome = () => {};
 
@@ -26,6 +28,7 @@ export function connect(welcome) {
 	socket.onopen = () => {
 		connecting = false;
 		connected = true;
+		sendName(); // (re)announce the name now that the socket is live
 	};
 
 	socket.onmessage = (event) => {
@@ -71,9 +74,25 @@ export function sendInput(x, z) {
 }
 
 /**
+ * Set (or change) this client's display name. Sent immediately when connected,
+ * otherwise it goes out as soon as the socket opens (including on reconnect).
+ * @param {string} name
+ */
+export function setName(name) {
+	displayName = name;
+	sendName();
+}
+
+/** Send the current display name if the socket is open. */
+function sendName() {
+	if (socket && socket.readyState === WebSocket.OPEN)
+		socket.send(JSON.stringify({ t: "name", name: displayName }));
+}
+
+/**
  * Take the most recent snapshot and clear it, so a frame faster than the server's
  * tick rate cannot apply the same snapshot twice.
- * @returns {?{tick: number, players: Array<[number, number, number]>}}
+ * @returns {?{tick: number, players: Array<[number, number, number, string]>}}
  */
 export function consumeSnapshot() {
 	const taken = snapshot;

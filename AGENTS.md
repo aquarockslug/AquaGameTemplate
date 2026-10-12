@@ -13,6 +13,10 @@ Full API reference: `ref/littlejs.md` (grep it before hand-rolling anything).
   `unary`). It is the only utility library — do not add Ramda/lodash/other deps.
 - `src/main.js` — the impure shell: the five LittleJS callbacks, spawning engine
   objects, copying state poses onto them. Side effects live here, kept obvious.
+- `src/menu.js` — the HTML menu shell (username picker): the only file that touches
+  the menu DOM, like `net.js` is the only file that touches WebSocket. The chosen
+  username is a shell concern — it never enters `state.js`; it is persisted with
+  `readSaveData`/`writeSaveData` and sent to the server by `net.setName`.
 - `src/sprites.js` and future entity files — thin views (EngineObject subclasses)
   with visual config only; no game rules in `update()`.
 - Naming: stages read as data flow (`advanceClock`, `computeBobPoses`), so
