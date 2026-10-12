@@ -119,7 +119,7 @@ function gameRenderPost() {
 
 	const remotes = Object.keys(players.remotes).length;
 	const status = net.isConnected()
-		? `${username}  ·  player ${net.id()}  ·  ${remotes + 1} online`
+		? `${remotes + 1} online`
 		: net.isConnecting()
 			? "connecting…"
 			: "offline — start server/run.lua  (retrying)";
