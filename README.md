@@ -1,8 +1,6 @@
 # LittleJS + esbuild
 
-A LittleJS game template with a dev server and production build. Code conventions live in `AGENTS.md`.
-
-## Commands
+A LittleJS game template with a dev server and production build.
 
 ```
 lua tools.lua dev             # dev server with live reload on :8000
