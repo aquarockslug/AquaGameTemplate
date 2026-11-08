@@ -1,7 +1,7 @@
 #!/usr/bin/env lua
--- lua tools.lua <dev|build|serve|install|server> [port|version]
+-- lua tools.lua <dev|build|serve|install> [port|version]
 -- dev starts esbuild + Chrome with remote debugging (CDP)
--- install fetches the client toolchain and the multiplayer server deps
+-- install fetches the client toolchain
 
 local cfg = {
 	port = "8000",
@@ -16,13 +16,6 @@ local cfg = {
 	target = "",         -- optional esbuild target, e.g. "es2020"
 	chrome = "google-chrome-stable --no-first-run --no-default-browser-check",
 	profile = "/tmp/opencode/aquagametemplate-chrome",
-	lua = "lua5.4",       -- interpreter the multiplayer server runs on
-	luaver = "5.4",       -- Lua version the multiplayer server runs on
-	rocks = "dkjson copas luasocket lua-websockets mimetypes", -- multiplayer server rocks
-	luasrc = {            -- Lua sources expected beside this repo (see server/run.lua)
-		{ "https://github.com/EvandroLG/pegasus.lua", "../pegasus.lua" },
-		{ "https://github.com/moteus/lua-pegasus-websocket", "../lua-pegasus-websocket" },
-	},
 }
 
 local a    = arg
@@ -68,33 +61,7 @@ local function serve(p) -- serve an existing build
 	run(sh(E .. " --servedir=" .. cfg.out .. " --serve=" .. p))
 end
 
-local function serverDeps() -- multiplayer server: rocks + the two Lua sources
-	-- Everything lands outside this repo: rocks in the user LuaRocks tree,
-	-- sources beside it (PEGASUS_DIR / WSPLUGIN_DIR, see server/run.lua).
-	for _, tool in ipairs { cfg.lua, "luarocks" } do
-		run("command -v " .. tool .. " >/dev/null 2>&1",
-			tool .. " not found; install it to run the multiplayer server (Debian/Ubuntu: apt install lua5.4 luarocks)")
-	end
-	print("Installing Lua " .. cfg.luaver .. " rocks: " .. cfg.rocks)
-	for rock in cfg.rocks:gmatch "%S+" do
-		-- lua-websockets lists luabitop, which does not build on Lua 5.4; the
-		-- server preloads a pure-Lua `bit` instead, so skip its dependencies
-		local skip = rock == "lua-websockets" and " --deps-mode=none" or ""
-		run("luarocks --lua-version=" .. cfg.luaver .. " --local install" .. skip .. " " .. rock,
-			"rock install failed: " .. rock)
-	end
-	for _, src in ipairs(cfg.luasrc) do
-		if os.execute("test -d '" .. src[2] .. "'") == true then
-			print("Keeping existing " .. src[2])
-		else
-			print("Cloning " .. src[1] .. " -> " .. src[2])
-			run("git clone --depth 1 " .. src[1] .. " '" .. src[2] .. "'",
-				"clone failed: " .. src[1])
-		end
-	end
-end
-
-local function install(v) -- client (esbuild + LittleJS) and multiplayer server deps
+local function install(v) -- client toolchain (esbuild + LittleJS)
 	v = v or cfg.esbuild
 	local s, m = (io.popen "uname -s"):read "*l", (io.popen "uname -m"):read "*l"
 	local plat = ({ Linux = "linux", Darwin = "darwin" })[s]
@@ -113,13 +80,6 @@ local function install(v) -- client (esbuild + LittleJS) and multiplayer server 
 		" && curl -Lsf -o lj.zip " .. lu ..
 		" && unzip -p lj.zip dist/littlejs.esm.js > littlejs.esm.js" ..
 		" && chmod +x esbuild && rm -f e.tgz lj.zip"), "install failed")
-
-	serverDeps()
-end
-
-local function server(p) -- run the multiplayer server, installing its deps first
-	serverDeps()
-	run(sh(cfg.lua .. " server/run.lua" .. (p and " " .. p or "")), "server failed")
 end
 
 local c, p = a[1], a[2]
@@ -127,5 +87,4 @@ if c == "dev" then dev(p or cfg.port)
 elseif c == "build" then build()
 elseif c == "serve" then serve(p or cfg.port)
 elseif c == "install" then install(p)
-elseif c == "server" then server(p)
-else print "Usage: lua tools.lua <dev|build|serve|install|server> [port|version]" os.exit(c and 1 or 0) end
+else print "Usage: lua tools.lua <dev|build|serve|install> [port|version]" os.exit(c and 1 or 0) end

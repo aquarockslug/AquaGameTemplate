@@ -13,17 +13,8 @@ export class Sprite extends l.EngineObject3D {
 	}
 }
 
-/**
- * A player's avatar, for both the local player and every remote one. The shell
- * only repositions it from pure state, so update() stays empty. `playerId` is the
- * server-assigned id, or null while offline.
- */
+/** A player's avatar. The shell only repositions it from pure state, so update() stays empty. */
 export class Player extends Sprite {
-	constructor(pos, tileInfo, color) {
-		super(pos, tileInfo, color);
-		this.playerId = null;
-	}
-
 	/** Place the avatar at an XZ position, keeping its height. */
 	setPos(x, z) {
 		this.pos3D = vec3(x, this.pos3D.y, z);

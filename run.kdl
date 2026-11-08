@@ -1,10 +1,5 @@
 layout {
-	pane split_direction="vertical" {
-		pane command="lua5.4" {
-			args "server/run.lua"
-		}
-		pane command="lua" {
-			args "tools.lua" "dev"
-		}
+	pane command="lua" {
+		args "tools.lua" "dev"
 	}
 }
